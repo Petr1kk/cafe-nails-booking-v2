@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#130c15">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Адмін-панель</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="demo-banner" class="demo" hidden>Демо-режим: дані вигадані й зберігаються лише в цьому браузері · пароль: <b>demo</b> · <a href="index.html">Сайт запису</a></div>
+
+  <header class="hero">
+    <h1>Адмін-панель</h1>
+    <p>Майстри, послуги та записи</p>
+  </header>
+
+  <!-- Вхід -->
+  <main class="card narrow" id="loginBox">
+    <h2>Вхід для менеджера</h2>
+    <form id="loginForm">
+      <label>Пароль<input id="pw" type="password" autocomplete="current-password" required></label>
+      <span class="fe" id="loginErr"></span>
+      <button class="primary" type="submit" id="loginBtn">Увійти</button>
+    </form>
+  </main>
+
+  <!-- Панель -->
+  <main class="card wide" id="panel" hidden>
+    <div class="topline">
+      <nav class="tabs" id="tabs">
+        <button data-tab="masters" class="on">Майстри</button>
+        <button data-tab="services">Послуги</button>
+        <button data-tab="bookings">Записи</button>
+        <button data-tab="outbox" id="outboxTab" hidden>Сповіщення (демо)</button>
+      </nav>
+      <button class="link" id="logout">Вийти</button>
+    </div>
+    <div id="msg" class="toast" hidden></div>
+
+    <section id="tab-masters">
+      <div class="head"><h2>Майстри</h2><button class="secondary small" id="addMaster">+ Новий майстер</button></div>
+      <div id="mList" class="alist"></div>
+    </section>
+
+    <section id="tab-services" hidden>
+      <div class="head"><h2>Послуги</h2><button class="secondary small" id="addService">+ Нова послуга</button></div>
+      <div id="sList" class="alist"></div>
+    </section>
+
+    <section id="tab-bookings" hidden>
+      <div class="head"><h2>Майбутні записи</h2></div>
+      <div id="bList" class="alist"></div>
+    </section>
+
+    <section id="tab-outbox" hidden>
+      <div class="head"><h2>Імітація листів і запрошень</h2></div>
+      <p class="hint">Так би працювали листи й запрошення в календар на справжньому сервері. Приберіть пошту в профілі майстра — нові записи більше не дають йому запрошень.</p>
+      <div id="oList" class="alist"></div>
+    </section>
+  </main>
+
+  <!-- Вікно редагування майстра -->
+  <div class="modal" id="mModal" hidden>
+    <form class="sheet" id="mForm" novalidate>
+      <h2 id="mTitle">Майстер</h2>
+      <div class="photoRow">
+        <span id="mAv"></span>
+        <div>
+          <input id="mFile" type="file" accept="image/*" hidden>
+          <button type="button" class="secondary small" id="mPick">Завантажити фото</button>
+          <button type="button" class="link" id="mDelPhoto">прибрати</button>
+          <small class="hint" id="mPhotoHint"></small>
+        </div>
+      </div>
+      <label>Ім’я<input id="m-name" maxlength="40"><span class="fe" id="me-name"></span></label>
+      <label>Спеціальність <small>(під іменем на сайті)</small><input id="m-role" maxlength="60" placeholder="Майстер манікюру"></label>
+      <fieldset>
+        <legend>Робочі дні</legend>
+        <div class="days" id="m-days"></div>
+        <span class="fe" id="me-workdays"></span>
+      </fieldset>
+      <div class="two">
+        <label>Початок дня<input id="m-start" type="time"></label>
+        <label>Кінець дня<input id="m-end" type="time"></label>
+      </div>
+      <span class="fe" id="me-hours"></span>
+      <div class="two">
+        <label>Обід з <small>(не обов’язково)</small><input id="m-lunchStart" type="time"></label>
+        <label>Обід до<input id="m-lunchEnd" type="time"></label>
+      </div>
+      <span class="fe" id="me-lunch"></span>
+      <label>Пошта <small>(сповіщення + запрошення в Google Календар)</small><input id="m-email" type="email" maxlength="120" placeholder="master@gmail.com"><span class="fe" id="me-email"></span></label>
+      <div class="two">
+        <label>Телефон<input id="m-phone" type="tel" maxlength="20" placeholder="+380 50 123 45 67"><span class="fe" id="me-phone"></span></label>
+        <label>Telegram<input id="m-telegram" maxlength="60" placeholder="@username"><span class="fe" id="me-telegram"></span></label>
+      </div>
+      <p class="hint">Telegram-бот із сповіщеннями — наступний етап: майстер один раз натисне Start у боті. Поки що це поле просто зберігається.</p>
+      <fieldset>
+        <legend>Які послуги робить <small>(нічого не обрано = усі)</small></legend>
+        <div id="m-services" class="checks"></div>
+      </fieldset>
+      <label class="inline"><input type="checkbox" id="m-active"> Показувати на сайті і приймати записи</label>
+      <div class="formBtns">
+        <button type="button" class="secondary" id="mCancel">Скасувати</button>
+        <button type="submit" class="primary" id="mSave">Зберегти</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Вікно редагування послуги -->
+  <div class="modal" id="sModal" hidden>
+    <form class="sheet" id="sForm" novalidate>
+      <h2 id="sTitle">Послуга</h2>
+      <label>Назва<input id="s-name" maxlength="80"><span class="fe" id="se-name"></span></label>
+      <label>Категорія <small>(групи на сайті)</small><input id="s-category" maxlength="40" list="catList" placeholder="Манікюр"></label>
+      <datalist id="catList"></datalist>
+      <div class="two">
+        <label>Тривалість, хв<input id="s-durationMin" type="number" min="10" max="480" step="5"><span class="fe" id="se-durationMin"></span></label>
+        <label>Ціна, ₴<input id="s-price" type="number" min="0" step="10"><span class="fe" id="se-price"></span></label>
+      </div>
+      <label class="inline"><input type="checkbox" id="s-active"> Показувати на сайті</label>
+      <div class="formBtns">
+        <button type="button" class="secondary" id="sCancel">Скасувати</button>
+        <button type="submit" class="primary" id="sSave">Зберегти</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="core.js"></script>
+  <script src="config.js"></script>
+  <script src="demo.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
