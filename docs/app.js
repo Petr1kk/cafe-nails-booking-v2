@@ -18,7 +18,7 @@
     TIMEOUT: 'Сервер відповідає надто довго. Спробуйте ще раз.'
   };
 
-  var state = { cfg: null, nearest: {}, selected: [], rest: [], service: null, master: 'any', days: {}, day: null, time: null, openedAt: 0, query: '' };
+  var state = { cfg: null, selected: [], rest: [], service: null, master: 'any', days: {}, day: null, time: null, openedAt: 0, query: '', cat: null, step: 0, cache: {} };
 
   /* ---------- Связь с сервером ---------- */
   var api = DEMO ? window.DEMO_API : realApi();
@@ -51,9 +51,14 @@
   function show(id) {
     SCREENS.forEach(function (s) { $('#' + s).hidden = s !== id; });
     $('#loading').hidden = true; $('#error').hidden = true;
-    var n = { step1: 1, step2: 2, step3: 3, step4: 4 }[id];
+    var n = { step1: 1, step2: 2, step3: 3, step4: 4 }[id] || 0;
+    state.step = n;
     $('#steps').hidden = !n;
-    document.querySelectorAll('#steps li').forEach(function (li) { li.classList.toggle('on', Number(li.dataset.s) <= (n || 0)); });
+    document.querySelectorAll('#steps li').forEach(function (li) {
+      var k = Number(li.dataset.s);
+      li.classList.toggle('on', k <= n); li.classList.toggle('cur', k === n); li.classList.toggle('past', k < n);
+      li.querySelector('button').disabled = !(k < n);   // вернуться можна лише на пройдені кроки
+    });
     window.scrollTo(0, 0);
   }
   function loading(on) { $('#loading').hidden = !on; if (on) SCREENS.forEach(function (s) { $('#' + s).hidden = true; }); }
@@ -99,88 +104,85 @@
   function masterLabel(id) { var m = masterObj(id); return id === 'any' ? 'будь-який майстер' : (m ? m.name : ''); }
   function svcOf(ids) { return ids.length ? CORE.combineServices(state.cfg.services, ids.join(',')) : null; }
 
-  /* ---------- Крок 1: мастер ---------- */
+  /* ---------- Крок 1: послуги ---------- */
+  var ICONS = {
+    hair: '<svg viewBox="0 0 32 32"><circle cx="9" cy="24" r="4"/><circle cx="23" cy="24" r="4"/><path d="M12 21 26 4M20 21 6 4"/></svg>',
+    nails: '<svg viewBox="0 0 32 32"><rect x="11" y="14" width="10" height="14" rx="2"/><path d="M13 14v-4h6v4M14 10V4h4v6"/></svg>',
+    feet: '<svg viewBox="0 0 32 32"><path d="M16 4c5 6 8 10 8 15a8 8 0 0 1-16 0c0-5 3-9 8-15z"/></svg>',
+    other: '<svg viewBox="0 0 32 32"><path d="M16 4l2.5 7.5L26 14l-7.5 2.5L16 24l-2.5-7.5L6 14l7.5-2.5z"/></svg>'
+  };
+  function catIcon(name) {
+    var n = String(name || '').toLowerCase();
+    return /стриж|волос|зачіс/.test(n) ? ICONS.hair : /педик/.test(n) ? ICONS.feet : /манік|нігт/.test(n) ? ICONS.nails : ICONS.other;
+  }
+  function plural(n) { var a = n % 10, b = n % 100; return n + (a === 1 && b !== 11 ? ' послуга' : (a >= 2 && a <= 4 && (b < 12 || b > 14)) ? ' послуги' : ' послуг'); }
+  /** Послуги, які хоч хтось із активних майстрів справді робить. */
+  function allServices() { return state.cfg.services.filter(function (s) { return CORE.eligibleMasters(state.cfg.masters, s.id).length > 0; }); }
+  function catOf(s) { return s.category || 'Інше'; }
+
   function renderStep1() {
     var c = state.cfg;
     $('#title').textContent = c.title; $('#subtitle').textContent = c.subtitle || '';
     document.title = c.title;
-    if (!c.masters.length) { $('#masters').innerHTML = '<div class="state">Зараз немає доступних майстрів. Зателефонуйте нам.</div>'; show('step1'); return; }
-    var html = '<button class="mcard any" data-id="any">' + avatar(null) + '<span class="mi"><b>Будь-який майстер</b><small>Покажемо весь вільний час усіх майстрів</small></span><span class="go">›</span></button>';
-    html += c.masters.map(function (m) {
-      return '<button class="mcard" data-id="' + esc(m.id) + '">' + avatar(m) + '<span class="mi"><b>' + esc(m.name) + '</b><small>' + esc(m.role || 'Майстер') + '</small>' +
-        '<span class="near" data-near="' + esc(m.id) + '">' + nearHtml(m.id) + '</span></span><span class="go">›</span></button>';
-    }).join('');
-    $('#masters').innerHTML = html;
-    wirePhotos($('#masters'));
-    $('#masters').onclick = function (e) {
-      var b = e.target.closest('.mcard'); if (!b) return;
-      state.master = b.dataset.id; state.selected = []; state.rest = []; state.query = '';
-      renderStep2();
-    };
+    state.master = 'any'; state.cache = {};
+    if (!allServices().length) {
+      $('#cats').innerHTML = ''; $('#services').innerHTML = ''; $('#q').hidden = true; $('#to2').disabled = true; $('#total').textContent = '';
+      $('#noServices').textContent = 'Зараз немає доступних майстрів. Зателефонуйте нам.'; $('#noServices').hidden = false;
+      show('step1'); return;
+    }
+    $('#q').hidden = false; $('#q').value = state.query;
+    renderCats(); renderServiceList(); updateTotal();
     show('step1');
   }
-  function nearHtml(id) {
-    var list = state.nearest[id];
-    if (!list) return '<span class="chip-s dim">шукаємо вільний час…</span>';
-    if (!list.length) return '<span class="chip-s dim">найближчим часом місць немає</span>';
-    return list.map(function (s) { return '<span class="chip-s">' + esc(whenLabel(s.day, s.time)) + '</span>'; }).join('');
-  }
-  function loadNearest() {
-    api.overview().then(function (r) {
-      state.nearest = r && r.ok ? r.nearest : {};
-      document.querySelectorAll('[data-near]').forEach(function (el) { el.innerHTML = nearHtml(el.dataset.near); });
-    });
-  }
-
-  /* ---------- Крок 2: услуги ---------- */
-  function availableServices() {
-    var m = masterObj(state.master);
-    if (m) return CORE.servicesFor(state.cfg.services, m);
-    return state.cfg.services.filter(function (s) { return CORE.eligibleMasters(state.cfg.masters, s.id).length > 0; });   // «любой»: услуги, которые хоть кто-то делает
-  }
-  function renderStep2() {
-    var m = masterObj(state.master);
-    $('#who').innerHTML = avatar(m, 'sm') + '<span><small>Ваш майстер</small><b>' + esc(m ? m.name : 'Будь-який майстер') + '</b></span><button class="link" id="chg">змінити</button>';
-    wirePhotos($('#who'));
-    $('#chg').onclick = function () { show('step1'); };
-    $('#q').value = state.query;
-    renderServiceList();
-    updateTotal();
-    show('step2');
+  function renderCats() {
+    var g = CORE.groupByCategory(allServices());
+    if (!state.cat || !g.some(function (x) { return x.name === state.cat; })) state.cat = g.length ? g[0].name : null;
+    $('#cats').innerHTML = g.map(function (x) {
+      var n = x.items.filter(function (s) { return state.selected.indexOf(s.id) >= 0; }).length;
+      return '<button class="cat' + (x.name === state.cat && !state.query ? ' sel' : '') + '" data-cat="' + esc(x.name) + '">' + (n ? '<span class="cnt">' + n + '</span>' : '') +
+        catIcon(x.name) + '<span class="t">' + esc(x.name) + '</span><span class="d">' + plural(x.items.length) + '</span></button>';
+    }).join('');
   }
   function renderServiceList() {
-    var list = CORE.filterServices(availableServices(), state.query), groups = CORE.groupByCategory(list);
-    $('#noServices').hidden = list.length > 0;
+    var q = state.query.trim(), base = allServices(), list, groups;
+    if (q) { list = CORE.filterServices(base, q); groups = CORE.groupByCategory(list); $('#catname').textContent = '· пошук'; }
+    else {
+      list = base.filter(function (s) { return catOf(s) === state.cat; });
+      groups = [{ name: state.cat, items: list }];
+      $('#catname').textContent = state.cat ? '· ' + state.cat : '';
+    }
+    $('#noServices').textContent = 'Нічого не знайдено'; $('#noServices').hidden = list.length > 0;
     $('#services').innerHTML = groups.map(function (g) {
-      return '<h3>' + esc(g.name) + '</h3><div class="list">' + g.items.map(function (s) {
+      return (q ? '<h3>' + esc(g.name) + '</h3>' : '') + '<div class="list">' + g.items.map(function (s) {
         return '<button class="opt' + (state.selected.indexOf(s.id) >= 0 ? ' sel' : '') + '" data-id="' + esc(s.id) + '"><span class="chk"></span><span class="nm">' + esc(s.name) + '<small>' + fmtDur(s.durationMin) + '</small></span><span class="price">' + s.price + ' ₴</span></button>';
       }).join('') + '</div>';
     }).join('');
   }
-  $('#q').addEventListener('input', function () { state.query = $('#q').value; renderServiceList(); });
+  $('#q').addEventListener('input', function () { state.query = $('#q').value; renderCats(); renderServiceList(); });
+  $('#cats').addEventListener('click', function (e) {
+    var b = e.target.closest('.cat'); if (!b) return;
+    state.cat = b.dataset.cat; state.query = ''; $('#q').value = '';
+    renderCats(); renderServiceList();
+  });
   $('#services').addEventListener('click', function (e) {
     var b = e.target.closest('.opt'); if (!b) return;
     var id = b.dataset.id, i = state.selected.indexOf(id);
     if (i >= 0) state.selected.splice(i, 1);
     else if (state.selected.length < 4) state.selected.push(id);
     b.classList.toggle('sel', state.selected.indexOf(id) >= 0);
-    state.rest = [];
-    updateTotal();
+    state.rest = []; state.master = 'any'; state.cache = {};
+    renderCats(); updateTotal();
   });
 
-  /** Мастера, которые смогут сделать ВСЕ выбранные услуги. */
-  function whoCan(ids) {
-    var m = masterObj(state.master);
-    if (m) return CORE.masterDoes(m, ids) ? [m] : [];
-    return CORE.eligibleMasters(state.cfg.masters, ids.join(','));
-  }
-  /** Самое длинное окно у подходящих мастеров. */
+  /** Майстри, які зможуть зробити ВСІ обрані послуги. */
+  function whoCan(ids) { return CORE.eligibleMasters(state.cfg.masters, ids.join(',')); }
+  /** Найдовше вікно у підходящих майстрів. */
   function limitFor(ids) {
     var best = 0;
     whoCan(ids).forEach(function (m) { if (typeof m.maxBlockMin !== 'number') best = Infinity; else if (m.maxBlockMin > best) best = m.maxBlockMin; });
     return best;
   }
-  /** Оставляем услуги по порядку выбора, пока влезают в окно; остальное — на отдельный визит. */
+  /** Залишаємо послуги за порядком вибору, поки влазять у вікно; решта — на окремий візит. */
   function splitToFit(max) {
     var keep = [], rest = [], sum = 0;
     state.selected.forEach(function (id) {
@@ -191,10 +193,10 @@
   }
   function updateTotal() {
     var sv = svcOf(state.selected), warn = $('#warn'), t = $('#total');
-    var noOne = !!sv && whoCan(state.selected).length === 0;           // «любой мастер», но никто не делает всё вместе
+    var noOne = !!sv && whoCan(state.selected).length === 0;           // жоден майстер не робить усе разом
     var max = sv ? limitFor(state.selected) : 0, tooLong = !!sv && !noOne && sv.durationMin > max;
     warn.hidden = !(tooLong || noOne);
-    $('#to3').disabled = !sv || tooLong || noOne;
+    $('#to2').disabled = !sv || tooLong || noOne;
     if (noOne) {
       warn.innerHTML = '<b>Усе це за один візит ніхто не зробить.</b> Різні майстри роблять різні послуги. Що можна зробити:' +
         '<button class="alt" data-act="drop">Залишити тільки останню обрану<small>Решту запишете окремим візитом</small></button>' +
@@ -202,7 +204,7 @@
     } else if (tooLong) {
       var sp = splitToFit(max), kept = svcOf(sp.keep), html;
       html = '<b>Це забагато для одного візиту.</b> Обрані послуги займають ' + fmtDur(sv.durationMin) +
-        ', а найдовше вільне вікно ' + (state.master === 'any' ? 'у майстрів' : 'у цього майстра') + ' — ' + fmtDur(max) + '. Що можна зробити:';
+        ', а найдовше вільне вікно у майстрів — ' + fmtDur(max) + '. Що можна зробити:';
       if (kept) html += '<button class="alt" data-act="fit">Залишити: ' + esc(kept.name) + ' (' + fmtDur(kept.durationMin) + ')<small>Решту (' + esc(svcOf(sp.rest).name) + ') запишете окремим візитом одразу після цього</small></button>';
       html += '<button class="alt" data-act="call">Зателефонувати нам<small>Дуже довгі набори краще узгодити з майстром</small></button>';
       warn.innerHTML = html;
@@ -216,7 +218,7 @@
   }
   function syncSelected() {
     document.querySelectorAll('#services .opt').forEach(function (x) { x.classList.toggle('sel', state.selected.indexOf(x.dataset.id) >= 0); });
-    updateTotal();
+    renderCats(); updateTotal();
   }
   $('#warn').onclick = function (e) {
     var b = e.target.closest('.alt'); if (!b) return;
@@ -230,12 +232,55 @@
     } else if (act === 'call') alert('Зателефонуйте нам — підберемо час під великий набір послуг.');
   };
 
+  /* ---------- Крок 2: майстер (тільки ті, хто робить обрані послуги) ---------- */
+  /** Вільний час тягнемо один раз на пару «послуги + майстер» і запам’ятовуємо (кеш скидається при зміні послуг). */
+  function loadSlots(ids, master) {
+    var key = ids + '|' + master;
+    if (!state.cache[key]) {
+      state.cache[key] = api.slots(ids, master).then(function (r) { if (!r || !r.ok) delete state.cache[key]; return r; });
+    }
+    return state.cache[key];
+  }
+  function nearHtml(r) {
+    if (!r || !r.ok) return '<span class="dim">час не вдалося завантажити</span>';
+    var out = [];
+    Object.keys(r.days).sort().forEach(function (d) { r.days[d].forEach(function (t) { if (out.length < 3) out.push(whenLabel(d, t).toLowerCase()); }); });
+    if (!out.length) return '<span class="dim">найближчим часом місць немає</span>';
+    return out.map(function (x, i) { return (i ? '<em>/</em>' + esc(x) : '<b>' + esc(x) + '</b>'); }).join('');
+  }
+  function renderStep2() {
+    var sv = svcOf(state.selected); if (!sv) return renderStep1();
+    $('#chosen').innerHTML = '<span><small>Ваші послуги</small><b>' + esc(sv.name) + '</b><small>' + fmtDur(sv.durationMin) + ' · ' + sv.price + ' ₴</small></span><button class="link" id="chg">змінити</button>';
+    $('#chg').onclick = function () { show('step1'); };
+    var ms = whoCan(state.selected).filter(function (m) { return typeof m.maxBlockMin !== 'number' || m.maxBlockMin >= sv.durationMin; });
+    $('#noMasters').hidden = ms.length > 0;
+    var html = ms.map(function (m) {
+      return '<button class="mrow" data-id="' + esc(m.id) + '">' + avatar(m) + '<span class="mi"><b>' + esc(m.name) + '</b><small>' + esc(m.role || 'Майстер') + '</small>' +
+        '<span class="near" data-near="' + esc(m.id) + '"><span class="dim">шукаємо вільний час…</span></span></span><span class="go">→</span></button>';
+    }).join('');
+    if (ms.length > 1) html += '<button class="mrow" data-id="any">' + avatar(null, 'any') + '<span class="mi"><b>Будь-який майстер</b><small>Покажемо весь вільний час усіх, хто це робить</small></span><span class="go">→</span></button>';
+    $('#masters').innerHTML = html;
+    wirePhotos($('#masters'));
+    ms.forEach(function (m) {
+      loadSlots(sv.ids, m.id).then(function (r) {
+        var el = document.querySelector('[data-near="' + m.id.replace(/["\\]/g, '') + '"]');
+        if (el) el.innerHTML = nearHtml(r);
+      });
+    });
+    show('step2');
+  }
+  $('#masters').onclick = function (e) {
+    var b = e.target.closest('.mrow'); if (!b) return;
+    state.master = b.dataset.id;
+    goStep3();
+  };
+
   /* ---------- Крок 3: день и время ---------- */
   function goStep3() {
     state.service = combined();
     state.day = null; state.time = null; $('#to4').disabled = true;
     loading(true);
-    api.slots(state.service.ids, state.master).then(function (r) {
+    loadSlots(state.service.ids, state.master).then(function (r) {
       if (!r.ok) { loading(false); return fail(r.error); }
       if (!r.accepting) { loading(false); return fail('CLOSED'); }
       state.days = r.days;
@@ -300,7 +345,7 @@
       btn.disabled = false; btn.textContent = 'Записатися';
       if (r.ok) return renderDone(r.booking);
       if (r.error === 'VALIDATION') return showErrors(r.fields || {});
-      if (r.error === 'TAKEN') { alert(ERR.TAKEN); return goStep3(); }
+      if (r.error === 'TAKEN') { alert(ERR.TAKEN); state.cache = {}; return goStep3(); }
       alert(ERR[r.error] || ERR.SERVER);
     });
   });
@@ -323,7 +368,7 @@
   $('#restBtn').onclick = function () {
     state.selected = state.rest.slice(); state.rest = [];
     state.day = null; state.time = null;
-    renderStep2();
+    renderStep1();
   };
   $('#again').onclick = function () { location.href = location.pathname; };
 
@@ -350,12 +395,20 @@
   }
 
   /* ---------- Кнопки навигации ---------- */
-  $('#to3').onclick = goStep3;
+  $('#to2').onclick = renderStep2;
   $('#to4').onclick = renderStep4;
   document.querySelectorAll('.back').forEach(function (b) {
     b.addEventListener('click', function () {
       var to = b.dataset.back;
       if (to === '1') show('step1'); else if (to === '2') show('step2'); else show('step3');
+    });
+  });
+
+  document.querySelectorAll('#steps li').forEach(function (li) {
+    li.querySelector('button').addEventListener('click', function () {
+      var n = Number(li.dataset.s);
+      if (n >= state.step) return;   // вперед по кроках — лише кнопками «Далі»
+      show('step' + n);
     });
   });
 
@@ -367,7 +420,7 @@
     api.config().then(function (c) {
       if (!c.ok) { loading(false); return fail(c.error); }
       if (!c.accepting) { loading(false); return fail('CLOSED'); }
-      state.cfg = c; renderStep1(); loadNearest();
+      state.cfg = c; renderStep1();
     });
   }
 })();

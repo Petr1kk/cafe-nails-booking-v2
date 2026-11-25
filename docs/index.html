@@ -3,99 +3,107 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#130c15">
-  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#f7f5f1">
+  <meta name="color-scheme" content="light">
   <title>Запис до майстра</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="site.css">
 </head>
 <body>
   <div id="demo-banner" class="demo" hidden>Демо-режим: дані вигадані, нічого нікуди не відправляється · <a href="admin.html">Адмін-панель</a></div>
 
-  <header class="hero">
-    <h1 id="title">Запис до майстра</h1>
-    <p id="subtitle">Оберіть майстра, послуги та зручний час</p>
-  </header>
+  <div class="wrap">
+    <aside>
+      <div class="brand"><i></i>Запис онлайн</div>
+      <h1 id="title">Запис до майстра</h1>
+      <p class="sub" id="subtitle">Оберіть послуги, майстра та зручний час</p>
+      <ol class="steps" id="steps" hidden>
+        <li data-s="1"><button type="button"><span>01</span>Послуги</button></li>
+        <li data-s="2"><button type="button"><span>02</span>Майстер</button></li>
+        <li data-s="3"><button type="button"><span>03</span>Час</button></li>
+        <li data-s="4"><button type="button"><span>04</span>Дані</button></li>
+      </ol>
+    </aside>
 
-  <main class="card">
-    <ol class="steps" id="steps" hidden>
-      <li data-s="1">Майстер</li><li data-s="2">Послуги</li><li data-s="3">Час</li><li data-s="4">Дані</li>
-    </ol>
+    <main>
+      <div id="loading" class="state">Завантаження…</div>
+      <div id="error" class="state err" hidden></div>
 
-    <div id="loading" class="state">Завантаження…</div>
-    <div id="error" class="state err" hidden></div>
+      <!-- Крок 1: послуги -->
+      <section id="step1" hidden>
+        <h2><b>01</b>Що вас цікавить</h2>
+        <div id="cats" class="cats"></div>
+        <h2><b>02</b>Оберіть послуги <em id="catname"></em> <small>можна кілька</small></h2>
+        <input id="q" type="search" placeholder="Пошук послуги…" autocomplete="off" aria-label="Пошук послуги">
+        <div id="services"></div>
+        <div id="noServices" class="state" hidden>Нічого не знайдено</div>
+        <div id="warn" class="warn" hidden></div>
+        <div class="bar">
+          <div id="total" class="total"></div>
+          <button id="to2" class="primary" disabled>Далі: майстер</button>
+        </div>
+      </section>
 
-    <!-- Крок 1: майстер -->
-    <section id="step1" hidden>
-      <h2>Оберіть майстра</h2>
-      <div id="masters" class="masters"></div>
-    </section>
+      <!-- Крок 2: майстер -->
+      <section id="step2" hidden>
+        <button class="back" data-back="1">← Назад</button>
+        <div id="chosen" class="chosen"></div>
+        <h2><b>03</b>Оберіть майстра</h2>
+        <div id="masters" class="mlist"></div>
+        <div id="noMasters" class="state" hidden>Для цього набору послуг немає вільних майстрів. Зателефонуйте нам.</div>
+      </section>
 
-    <!-- Крок 2: послуги -->
-    <section id="step2" hidden>
-      <button class="back" data-back="1"><span>←</span> Назад</button>
-      <div id="who" class="who"></div>
-      <h2>Оберіть послуги <small>можна кілька</small></h2>
-      <input id="q" type="search" placeholder="Пошук послуги…" autocomplete="off" aria-label="Пошук послуги">
-      <div id="services"></div>
-      <div id="noServices" class="state" hidden>Нічого не знайдено</div>
-      <div id="warn" class="warn" hidden></div>
-      <div class="bar">
-        <div id="total" class="total"></div>
-        <button id="to3" class="primary" disabled>Далі</button>
-      </div>
-    </section>
+      <!-- Крок 3: дата і час -->
+      <section id="step3" hidden>
+        <button class="back" data-back="2">← Назад</button>
+        <div id="summary3" class="note"></div>
+        <h2><b>04</b>Оберіть день</h2>
+        <div id="days" class="chips scroll"></div>
+        <h2><b>05</b>Вільний час</h2>
+        <div id="times" class="times"></div>
+        <div id="nodays" class="state" hidden></div>
+        <button id="to4" class="primary" disabled>Далі: ваші дані</button>
+      </section>
 
-    <!-- Крок 3: дата і час -->
-    <section id="step3" hidden>
-      <button class="back" data-back="2"><span>←</span> Назад</button>
-      <div id="summary3" class="note"></div>
-      <h2>Оберіть день</h2>
-      <div id="days" class="chips scroll"></div>
-      <h2>Вільний час</h2>
-      <div id="times" class="times"></div>
-      <div id="nodays" class="state" hidden></div>
-      <button id="to4" class="primary" disabled>Далі</button>
-    </section>
+      <!-- Крок 4: дані -->
+      <section id="step4" hidden>
+        <button class="back" data-back="3">← Назад</button>
+        <div id="summary4" class="note"></div>
+        <form id="form" novalidate>
+          <label>Ім’я<input id="f-name" autocomplete="name" maxlength="60"><span class="fe" id="e-name"></span></label>
+          <label>Телефон<input id="f-phone" type="tel" autocomplete="tel" placeholder="+380 50 123 45 67" maxlength="20"><span class="fe" id="e-phone"></span></label>
+          <label>Пошта <small>(необов’язково, надішлемо підтвердження)</small><input id="f-email" type="email" autocomplete="email" maxlength="120"><span class="fe" id="e-email"></span></label>
+          <label>Побажання <small>(необов’язково)</small><textarea id="f-comment" rows="2" maxlength="500"></textarea></label>
+          <input id="f-website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <p class="consent">Натискаючи «Записатися», ви погоджуєтесь на обробку імені й телефону лише для цього запису.</p>
+          <button id="submit" class="primary" type="submit">Записатися</button>
+        </form>
+      </section>
 
-    <!-- Крок 4: дані -->
-    <section id="step4" hidden>
-      <button class="back" data-back="3"><span>←</span> Назад</button>
-      <div id="summary4" class="note"></div>
-      <form id="form" novalidate>
-        <label>Ім’я<input id="f-name" autocomplete="name" maxlength="60"><span class="fe" id="e-name"></span></label>
-        <label>Телефон<input id="f-phone" type="tel" autocomplete="tel" placeholder="+380 50 123 45 67" maxlength="20"><span class="fe" id="e-phone"></span></label>
-        <label>Пошта <small>(необов’язково, надішлемо підтвердження)</small><input id="f-email" type="email" autocomplete="email" maxlength="120"><span class="fe" id="e-email"></span></label>
-        <label>Побажання <small>(необов’язково)</small><textarea id="f-comment" rows="2" maxlength="500"></textarea></label>
-        <input id="f-website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-        <p class="consent">Натискаючи «Записатися», ви погоджуєтесь на обробку імені й телефону лише для цього запису.</p>
-        <button id="submit" class="primary" type="submit">Записатися</button>
-      </form>
-    </section>
+      <!-- Готово -->
+      <section id="done" hidden>
+        <div class="ok">✓</div>
+        <h2 class="plain">Ви записані!</h2>
+        <div id="doneInfo" class="note big"></div>
+        <p>Щоб скасувати запис, збережіть це посилання:</p>
+        <input id="cancelLink" readonly>
+        <button id="copy" class="secondary">Скопіювати посилання</button>
+        <button id="restBtn" class="primary" hidden></button>
+        <button id="again" class="secondary">Записатися ще раз</button>
+      </section>
 
-    <!-- Готово -->
-    <section id="done" hidden>
-      <div class="ok">✓</div>
-      <h2>Ви записані!</h2>
-      <div id="doneInfo" class="note big"></div>
-      <p>Щоб скасувати запис, збережіть це посилання:</p>
-      <input id="cancelLink" readonly>
-      <button id="copy" class="secondary">Скопіювати посилання</button>
-      <button id="restBtn" class="primary" hidden></button>
-      <button id="again" class="secondary">Записатися ще раз</button>
-    </section>
+      <!-- Скасування за посиланням -->
+      <section id="cancelBox" hidden>
+        <h2 class="plain">Скасування запису</h2>
+        <div id="cancelInfo" class="note big"></div>
+        <button id="cancelBtn" class="primary danger">Скасувати запис</button>
+      </section>
+    </main>
 
-    <!-- Скасування за посиланням -->
-    <section id="cancelBox" hidden>
-      <h2>Скасування запису</h2>
-      <div id="cancelInfo" class="note big"></div>
-      <button id="cancelBtn" class="primary danger">Скасувати запис</button>
-    </section>
-  </main>
-
-  <footer class="foot">Демо-проєкт для портфоліо · вигаданий салон</footer>
+    <footer class="foot">Демо-проєкт для портфоліо · вигаданий салон</footer>
+  </div>
 
   <script src="core.js"></script>
   <script src="config.js"></script>
