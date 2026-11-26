@@ -16,7 +16,11 @@
 
   <div class="wrap">
     <aside>
-      <div class="brand"><i></i>Запис онлайн</div>
+      <!-- ЛОГОТИП: замініть файл logo.svg на свій (або змініть src і текст тут) -->
+      <a class="brand" href="./" aria-label="Nail Studio — на головну">
+        <img src="logo.svg" alt="" width="40" height="40">
+        <span>Nail Studio</span>
+      </a>
       <h1 id="title">Запис до майстра</h1>
       <p class="sub" id="subtitle">Оберіть послуги, майстра та зручний час</p>
       <ol class="steps" id="steps" hidden>
@@ -36,9 +40,8 @@
         <h2><b>01</b>Що вас цікавить</h2>
         <div id="cats" class="cats"></div>
         <h2><b>02</b>Оберіть послуги <em id="catname"></em> <small>можна кілька</small></h2>
-        <input id="q" type="search" placeholder="Пошук послуги…" autocomplete="off" aria-label="Пошук послуги">
         <div id="services"></div>
-        <div id="noServices" class="state" hidden>Нічого не знайдено</div>
+        <div id="noServices" class="state" hidden></div>
         <div id="warn" class="warn" hidden></div>
         <div class="bar">
           <div id="total" class="total"></div>
@@ -99,6 +102,8 @@
         <h2 class="plain">Скасування запису</h2>
         <div id="cancelInfo" class="note big"></div>
         <button id="cancelBtn" class="primary danger">Скасувати запис</button>
+        <!-- Кнопка повернення: посилання на сайт без ?cancel (адресу ставить app.js) -->
+        <a id="homeBtn" class="secondary" href="./" hidden>На головну</a>
       </section>
     </main>
 

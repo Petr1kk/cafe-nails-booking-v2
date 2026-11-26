@@ -114,8 +114,6 @@ t('категория по умолчанию', CORE.parseServices([['s5', 'Що
 t('услуги по категориям', CORE.groupByCategory(svAll).map(g => g.name + ':' + g.items.length), ['Манікюр:2', 'Педикюр:1']);
 t('услуги мастера (Марія: s1,s2)', CORE.servicesFor(svAll, masters[0]).map(s => s.id), ['s1', 's2']);
 t('услуги «любого» = все', CORE.servicesFor(svAll, null).length, 3);
-t('поиск услуг без учёта регистра', CORE.filterServices(svAll, 'ПЕДИ').map(s => s.id), ['s3']);
-t('поиск пустой = все', CORE.filterServices(svAll, '  ').length, 3);
 t('serviceRow ↔ parseServices (круг)', CORE.parseServices([CORE.serviceRow(svAll[1])], true)[0], svAll[1]);
 
 t('telegram: без @', CORE.normalizeTelegram('maria_nails'), '@maria_nails');

@@ -145,12 +145,6 @@ var CORE = (function () {
     });
     return groups;
   }
-  /** Поиск по названию (без учёта регистра). */
-  function filterServices(services, q) {
-    q = String(q || '').trim().toLowerCase();
-    if (!q) return services;
-    return services.filter(function (s) { return s.name.toLowerCase().indexOf(q) >= 0; });
-  }
 
   function normalizeTelegram(raw) {
     var s = String(raw || '').trim().replace(/^https?:\/\/t\.me\//i, '').replace(/^@/, '');
@@ -369,7 +363,7 @@ var CORE = (function () {
     publicMasters: publicMasters, maxBlockMin: maxBlockMin, combineServices: combineServices, fmt: fmt, hm: hm, isoWeekday: isoWeekday, addDays: addDays, validDay: validDay,
     availableDays: availableDays, masterFree: masterFree, freeTimes: freeTimes, pickMaster: pickMaster, nearestSlots: nearestSlots,
     activeMasters: activeMasters, masterRow: masterRow, serviceRow: serviceRow, masterDoes: masterDoes, eligibleMasters: eligibleMasters,
-    servicesFor: servicesFor, groupByCategory: groupByCategory, filterServices: filterServices, normalizeTelegram: normalizeTelegram,
+    servicesFor: servicesFor, groupByCategory: groupByCategory, normalizeTelegram: normalizeTelegram,
     validateMaster: validateMaster, validateService: validateService, parseIdList: parseIdList,
     normalizePhone: normalizePhone, formatPhone: formatPhone, cleanText: cleanText, sanitizeCell: sanitizeCell,
     escapeHtml: escapeHtml, validateClient: validateClient, decideAttempt: decideAttempt

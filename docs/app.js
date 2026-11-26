@@ -18,7 +18,7 @@
     TIMEOUT: 'Сервер відповідає надто довго. Спробуйте ще раз.'
   };
 
-  var state = { cfg: null, selected: [], rest: [], service: null, master: 'any', days: {}, day: null, time: null, openedAt: 0, query: '', cat: null, step: 0, cache: {} };
+  var state = { cfg: null, selected: [], rest: [], service: null, master: 'any', days: {}, day: null, time: null, openedAt: 0, cat: null, step: 0, cache: {} };
 
   /* ---------- Связь с сервером ---------- */
   var api = DEMO ? window.DEMO_API : realApi();
@@ -126,11 +126,11 @@
     document.title = c.title;
     state.master = 'any'; state.cache = {};
     if (!allServices().length) {
-      $('#cats').innerHTML = ''; $('#services').innerHTML = ''; $('#q').hidden = true; $('#to2').disabled = true; $('#total').textContent = '';
+      $('#cats').innerHTML = ''; $('#services').innerHTML = ''; $('#to2').disabled = true; $('#total').textContent = '';
       $('#noServices').textContent = 'Зараз немає доступних майстрів. Зателефонуйте нам.'; $('#noServices').hidden = false;
       show('step1'); return;
     }
-    $('#q').hidden = false; $('#q').value = state.query;
+    $('#noServices').hidden = true;
     renderCats(); renderServiceList(); updateTotal();
     show('step1');
   }
@@ -139,29 +139,21 @@
     if (!state.cat || !g.some(function (x) { return x.name === state.cat; })) state.cat = g.length ? g[0].name : null;
     $('#cats').innerHTML = g.map(function (x) {
       var n = x.items.filter(function (s) { return state.selected.indexOf(s.id) >= 0; }).length;
-      return '<button class="cat' + (x.name === state.cat && !state.query ? ' sel' : '') + '" data-cat="' + esc(x.name) + '">' + (n ? '<span class="cnt">' + n + '</span>' : '') +
+      return '<button class="cat' + (x.name === state.cat ? ' sel' : '') + '" data-cat="' + esc(x.name) + '">' + (n ? '<span class="cnt">' + n + '</span>' : '') +
         catIcon(x.name) + '<span class="t">' + esc(x.name) + '</span><span class="d">' + plural(x.items.length) + '</span></button>';
     }).join('');
   }
+  /** Список послуг обраної категорії. */
   function renderServiceList() {
-    var q = state.query.trim(), base = allServices(), list, groups;
-    if (q) { list = CORE.filterServices(base, q); groups = CORE.groupByCategory(list); $('#catname').textContent = '· пошук'; }
-    else {
-      list = base.filter(function (s) { return catOf(s) === state.cat; });
-      groups = [{ name: state.cat, items: list }];
-      $('#catname').textContent = state.cat ? '· ' + state.cat : '';
-    }
-    $('#noServices').textContent = 'Нічого не знайдено'; $('#noServices').hidden = list.length > 0;
-    $('#services').innerHTML = groups.map(function (g) {
-      return (q ? '<h3>' + esc(g.name) + '</h3>' : '') + '<div class="list">' + g.items.map(function (s) {
-        return '<button class="opt' + (state.selected.indexOf(s.id) >= 0 ? ' sel' : '') + '" data-id="' + esc(s.id) + '"><span class="chk"></span><span class="nm">' + esc(s.name) + '<small>' + fmtDur(s.durationMin) + '</small></span><span class="price">' + s.price + ' ₴</span></button>';
-      }).join('') + '</div>';
-    }).join('');
+    var list = allServices().filter(function (s) { return catOf(s) === state.cat; });
+    $('#catname').textContent = state.cat ? '· ' + state.cat : '';
+    $('#services').innerHTML = '<div class="list">' + list.map(function (s) {
+      return '<button class="opt' + (state.selected.indexOf(s.id) >= 0 ? ' sel' : '') + '" data-id="' + esc(s.id) + '"><span class="chk"></span><span class="nm">' + esc(s.name) + '<small>' + fmtDur(s.durationMin) + '</small></span><span class="price">' + s.price + ' ₴</span></button>';
+    }).join('') + '</div>';
   }
-  $('#q').addEventListener('input', function () { state.query = $('#q').value; renderCats(); renderServiceList(); });
   $('#cats').addEventListener('click', function (e) {
     var b = e.target.closest('.cat'); if (!b) return;
-    state.cat = b.dataset.cat; state.query = ''; $('#q').value = '';
+    state.cat = b.dataset.cat;
     renderCats(); renderServiceList();
   });
   $('#services').addEventListener('click', function (e) {
@@ -374,6 +366,9 @@
 
   /* ---------- Отмена по ссылке ---------- */
   function startCancel(token) {
+    var home = $('#homeBtn');
+    home.href = location.pathname;          // та сама сторінка, але без ?cancel=…
+    home.hidden = false;                    // кнопка видна завжди: і до, і після скасування, і при помилці
     api.booking(token).then(function (r) {
       if (!r.ok || r.status !== 'Записано') {
         $('#cancelInfo').textContent = 'Запис не знайдено або вже скасовано.';
@@ -390,6 +385,7 @@
       api.cancel(token).then(function (r) {
         $('#cancelInfo').textContent = r.ok ? 'Запис скасовано. Чекаємо на вас іншим разом!' : (ERR[r.error] || 'Не вдалося скасувати. Зателефонуйте нам.');
         b.hidden = true;
+        if (r.ok) $('#homeBtn').textContent = 'Записатися знову';
       });
     };
   }
